@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #define SQRT2PI (2.506628274631001)
+#define SQRTPI (1.772453851)
 #define SQRT2 (1.414213562373095)
 
 class cluster;
@@ -111,44 +112,13 @@ bool can_mix(dist const & A, dist const & B) {
     // return alpha * (A.mean - B.mean) * (A.mean - B.mean) > deltaVar;
 }
 
-double error_constant(dist const & left, dist const & right) {
-    static double sqrtmax = std::sqrt(std::numeric_limits<double>::max());
-
-    double va = left.population_var();
-    double vb = right.population_var();
-    double ma = left.mean;
-    double mb = right.mean;
-
-    // hopefully never happen?!
-    //std::cout << "/sa=" << sa << "/sb=" << sb << "/max=" << std::numeric_limits<double>::max() << "/";
-    if (va >= sqrtmax || vb >= sqrtmax) {
-        return 0;
-    }
-    
-    double sa2sb2 = va + vb;
-
-    double A = (ma * vb + mb * va);
-    A = A * A / (2 * va * vb * sa2sb2);
-    double B = (ma * ma * vb + mb * mb * va) / (2 * va * vb);
-
-    std::cout << "A: " << A << " B: " << B << " sa2sb2: " << sa2sb2  << " va*vb: " << va * vb << std::endl;
-
-    //std::cout << "/A=" << A << "/B=" << B << "/";
-
-    double ret = 2 * std::exp(-A + B) / std::sqrt(sa2sb2);
-
-    std::cout << "ret: " << ret << std::endl;
-    return ret;
+double gaussian(double mean, double variance, double x) {
+    double d = x - mean;
+    return std::exp(-d * d / 2 / variance) / SQRT2PI / std::sqrt(variance);
 }
 
 double comp_dist(dist const & left, dist const & right) {
-    double C = error_constant(left, right);
-    double va = left.population_var();
-    double vb = right.population_var();
-    double sa = left.population_std();
-    double sb = right.population_std();
-
-    return C / SQRT2 * std::sqrt(sa * sb);
+    return gaussian(left.mean, left.population_var() + right.population_var(), right.mean);
 }
 
 class cluster {
@@ -187,6 +157,9 @@ protected:
             double sa = left->d.sample_std();
             double sb = right->d.sample_std();
             double sc = d.sample_std();
+            double va = left->d.sample_var();
+            double vb = right->d.sample_var();
+            double vc = d.sample_var();
             double ma = left->d.mean;
             double mb = right->d.mean;
             double mc = d.mean;
@@ -196,20 +169,18 @@ protected:
                 //throw std::logic_error("stddev zero");
             }
 
-            double Cab = error_constant(left->d, right->d);
-            double Cac = error_constant(left->d, d);
-            double Cbc = error_constant(right->d, d);
+            double ret = 0.;
 
-            if (std::isnan(Cab)) throw std::logic_error("Cab is nan");
-            if (std::isnan(Cac)) throw std::logic_error("Cac is nan");
-            if (std::isnan(Cbc)) throw std::logic_error("Cbc is nan");
+            ret += a * a / sa;
+            ret += b * b / sb;
+            ret += 1 / sc;
+            ret = ret / 2 / SQRTPI;
 
-            double e2 = (a * a / sa + b * b / sb + 1. / sc) / SQRT2;
-            e2 += a * b * Cab;
-            e2 -= a * Cac;
-            e2 -= b * Cbc;
+            ret += 2 * a * b * gaussian(ma, va + vb, mb);
+            ret -= 2 * a * gaussian(ma, va + vc, mc);
+            ret -= 2 * b * gaussian(mb, vb + vc, mc);
 
-            return e2;
+            return ret;
         }
     };
 
@@ -267,8 +238,8 @@ private:
 
         // or else recurse
         // calculate the probability based on the density
-        double leftVal = error_constant((*from)->left->d, sample->d);
-        double rightVal = error_constant((*from)->right->d, sample->d);
+        double leftVal = gaussian((*from)->left->d.mean, (*from)->left->d.population_var() + sample->d.population_var(), sample->d.mean);
+        double rightVal = gaussian((*from)->right->d.mean, (*from)->right->d.population_var() + sample->d.population_var(), sample->d.mean);
 
         // flip a weighted coin
         double x = (leftVal + rightVal) * uniform(gen);
@@ -515,22 +486,22 @@ int main(int ac, char ** av) {
 
 
 
-    // cluster c;
+    cluster c;
 
-    // std::minstd_rand gen;
-    // std::normal_distribution<double> n1(3, 1);
-    // std::normal_distribution<double> n2(-3, 1);
-    // std::uniform_int_distribution<int> coin(0, 1);
+    std::minstd_rand gen;
+    std::normal_distribution<double> n1(3, 1);
+    std::normal_distribution<double> n2(-3, 1);
+    std::uniform_int_distribution<int> coin(0, 1);
 
-    // for(int x = 0; x < 20; x++) {
-    //     if (coin(gen) == 0) {
-    //         c.insert(n1(gen));
-    //     } else {
-    //         c.insert(n2(gen));
-    //     }
-    // }
+    for(int x = 0; x < 20; x++) {
+        if (coin(gen) == 0) {
+            c.insert(n1(gen));
+        } else {
+            c.insert(n2(gen));
+        }
+    }
 
-    // std::cout << c;
+    std::cout << c;
 
     return 0;
 }
