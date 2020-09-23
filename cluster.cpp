@@ -5,10 +5,13 @@
 #include <cmath>
 #include <utility>
 #include <algorithm>
+#include <set>
 
 #define SQRT2PI (2.506628274631001)
 #define SQRTPI (1.772453851)
 #define SQRT2 (1.414213562373095)
+
+using std::max;
 
 class cluster;
 
@@ -47,7 +50,7 @@ struct dist {
         m2 += delta * delta2;
     }
 
-    double density(double sample) const {
+    double sample_density(double sample) const {
         // if we have a single sample, the density everywhere is 1/sqrt(2 * PI) because it has infinite variance
         if (count == 1) {
             return 1 / SQRT2PI;
@@ -59,9 +62,37 @@ struct dist {
         return std::exp(-delta * delta / sample_var() / 2.) / SQRT2PI / sample_std();
     }
 
+    double population_density(double sample) const {
+        double delta = sample - mean;
+        // should we include the count or not?
+        // it's going to favor larger clusters, so maybe we should ignore it
+        return std::exp(-delta * delta / population_var() / 2.) / SQRT2PI / sample_std();
+    }
+
+
+
     dist() : mean(0), m2(0), count(0) { }
     dist(double mean) : mean(mean), m2(0), count(1) { }
     dist(double mean, double stddev, int count) : mean(mean), m2(stddev * stddev * count), count(count) { }
+    dist(dist const & d) : mean(d.mean), m2(d.m2), count(d.count) { }
+    dist & operator=(dist const & d) {
+        if(this != &d) {
+            mean = d.mean;
+            m2 = d.m2;
+            count = d.count;
+        }
+        return *this;
+    }
+    dist(dist const & A, dist const & B) {
+        count = A.count + B.count;
+        double a = (double)A.count / (double)count;
+        double b = 1. - a;
+        double delta = A.mean - B.mean;
+
+        mean = a * A.mean + b * B.mean;
+        double var = a * A.population_var() + b * B.population_var() + a * b * delta * delta;
+        m2 = var * count;
+    }
 
 };
 
@@ -117,8 +148,24 @@ double gaussian(double mean, double variance, double x) {
     return std::exp(-d * d / 2 / variance) / SQRT2PI / std::sqrt(variance);
 }
 
+/*
+returns a number between 0 if the distributions are identical, 1 if they do not overlap at all
+*/
 double comp_dist(dist const & left, dist const & right) {
-    return gaussian(left.mean, left.population_var() + right.population_var(), right.mean);
+    if (left.population_var() == 0 || right.population_var() == 0) {
+        return 1;
+    } 
+
+    double d = left.mean - right.mean;
+    double v = left.population_var() + right.population_var();
+    double s = left.population_std() + right.population_std();
+    double sa = left.population_std();
+    double sb = right.population_std();
+
+    // this should never be less than zero, if it is, it must be zero
+    double x = 1 - 2. * SQRT2 * sa * sb * std::exp(- d * d / 2. / v) / std::sqrt(v) / s;
+
+    return (x < 0) ? 0 : (x > 1) ? 1 : x;
 }
 
 class cluster {
@@ -137,11 +184,19 @@ protected:
         node(node * left, node * right) :
             left(left), right(right),
             d(mix(left->d, right->d))
-        { }
+        { 
+            if (left->d.population_var() > right->d.population_var()) {
+                std::swap(left, right);
+            }
+        }
 
         node(node * left, node * right, dist d) 
           : left(left), right(right), d(d)
-        { }
+        { 
+            if (left->d.population_var() > right->d.population_var()) {
+                std::swap(left, right);
+            }
+        }
 
         double error2() const {
             if (left == nullptr) {
@@ -188,6 +243,291 @@ private:
     node * root;
     std::minstd_rand gen;
     std::uniform_real_distribution<double> uniform;
+
+    void insert_helper3(node ** from, node ** sample) {
+        typedef void (cluster::*RecurseType)(node**,node**);
+        RecurseType recurse = cluster::insert_helper3;
+
+        if (*sample == nullptr) return;
+
+        if (*from == nullptr) {
+            *from = *sample;
+            return;
+        }
+
+        node * f = *from;
+        node * s = *sample;
+
+        if (f->left == nullptr) {
+            dist m = mix(f->d, s->d);
+
+            if (m.population_var() < max(f->d.population_var(), s->d.population_var())) {
+                // ok, first problem. We are at a leaf in the spot where
+                // we feel it's best to insert, but we can't mix with the
+                // sample.  What should we do?
+
+                // option 1: bubble up the one with the higher variance
+                //   honestly I can't think of another option
+
+                if (f->d.population_var() > s->d.population_var()) {
+                    *from = s;
+                    *sample = f;
+                }
+            } else {
+                *from = new node(f, s);
+                *sample = nullptr;
+            }
+            return;
+        }
+
+        // we are not a leaf, so we could insert here or keep going
+        // how do we decide?
+        // I don't think we should ever insert here until we've tried to insert
+        // into one of the child nodes.
+
+        auto l = comp_dist(f->left->d, s->d);
+        auto r = comp_dist(f->right->d, s->d);
+        bool insertLeft = true;
+
+        // less is more similar
+        if (l < r) {
+            insert_helper3(&f->left, sample);
+        } else {
+            insert_helper3(&f->right, sample);
+            insertLeft = false;
+        }
+
+        // keep the lower variance to the left
+        if (f->left->d.population_var() > f->right->d.population_var()) {
+            std::swap(f->left, f->right);
+        }
+
+        s = *sample;
+
+        // first check to see if we can mix the two new children
+        auto m = mix(f->left->d, f->right->d);
+
+        // can left ad right mix?
+        if (m.population_var() < max(f->left->d.population_var(), f->right->d.population_var())) {
+            // ok, we can't mix left and right  let's check the sample
+
+            if (s == nullptr) {
+                // no bubble, let's just bubble up the larger population variance
+                if (f->left->d.population_var() < f->right->d.population_var()) {
+                    *from = f->left;
+                    *sample = f->right;
+                } else {
+                    *from = f->right;
+                    *sample = f->left;
+                }
+                return;
+            }
+
+            // here is the trickiest bit, we have a bubble, and we can't mix.
+            // first lets see if we can mix bubble with either left or right:
+
+            if (insertLeft) {
+                // first we'll check to see if we can insert s here:
+                auto n = mix(f->left->d, s->d);
+
+                if (n.population_var() > max(f->left->d.population_var(), s->d.population_var())) {
+                    // cool, just merge left with the bubble, and bubble right
+                    *from = new node(f->left, s);
+                    *sample = f->right;
+                    delete f;
+                    return;
+                }
+
+                // ok, that didn't work, so try right
+                n = mix(f->right->d, s->d);
+
+                if (n.population_var() > max(f->right->d.population_var(), s->d.population_var())) {
+                    // splice in the bubble and bubble up the left one
+                    *from = new node(s, f->right);
+                    *sample = f->left;
+                    delete f;
+                    return;
+                }
+
+                // here's the really tricky part.  we have a bubble but can't mix the other one
+                // so we have three distributions that don't mix in pairs.
+                // s came from the left side, and the left side is not a leaf.
+
+                // try rotating the tree (why do I think that will work?)
+                // before we inserted mix(left,right) > max(left,right)
+                // we also know that s.var > max(left->left.var, left->right.var)
+                
+            } else {
+                dist n = mix(f->left->d, s->d);
+
+                if (n.population_var() > max(f->left->d.population_var(), s->d.population_var())) {
+                    // splice in the bubble and bubble up the right one;
+                    *from = new node(s, f->left);
+                    *sample = f->right;
+                    delete f;
+                    return;
+                }
+            }
+
+
+        } else {
+            f->d = m;
+        }
+
+        // do we have a bubble?
+        if (s != nullptr) {
+            // can we mix this?
+            auto m = mix(f->d, s->d);
+
+            if (m.population_var() < max(f->d.population_var(), s->d.population_var())) {
+                // we can't mix, let it bubble
+                return;
+            } else {
+                *from = new node(f, s);
+                *sample = nullptr;
+                // we are good here, return!
+                return;
+            }
+        }
+
+
+
+        // we can't mix, but left and right are good.  
+        // can we rotate the tree to make it work?
+    }
+
+public:
+    void insert3(double sample) {
+        node * s = new node(sample);
+
+        node * bub = nullptr;
+        insert_helper3(&root, &s);
+
+        // if (s != nullptr) {
+        //     print_helper(std::cout, 0, root);
+        //     print_helper(std::cout, 0, bub);
+
+        //     throw std::logic_error("got a bubble at root!");
+        // }
+    }
+
+private:
+
+    void insert_helper2(node ** from, node * sample, node ** bubble) {
+        node * f = *from;
+
+        // is this a trailing edge?
+        if (f == nullptr) {
+            *from = sample;
+            return;
+        }
+
+        node * b = nullptr;
+        bool insertedLeft = true;
+
+        // is this a leaf?
+        if (f->left == nullptr) {
+            *from = new node(f, sample);
+            f = *from;
+        } else {
+            // which variance will increase more?
+            dist ld = mix(sample->d, f->left->d);
+            dist rd = mix(sample->d, f->right->d);
+
+            if (ld.population_var() < rd.population_var()) {
+                insert_helper2(&f->left, sample, &b);
+            } else {
+                insert_helper2(&f->right, sample, &b);
+                insertedLeft = false;
+            }
+        }
+
+        if (f->left != nullptr) {
+            // now check our condition
+            dist m = mix(f->left->d, f->right->d);
+
+            if (m.population_var() < max(f->left->d.population_var(), f->right->d.population_var())) {
+                if (b != nullptr) {
+                    // can either one mix with b?
+                    dist n = mix(b->d, f->left->d);
+                    dist o = mix(b->d, f->right->d);
+
+                    if(n.population_var() > max(b->d.population_var(), f->left->d.population_var())) {
+                        // we can merge left with the bubble
+                        *from = f->right;
+                        b = new node(b, f->left);
+                        delete f;
+                        f = *from;
+                    } else if (o.population_var() > max(b->d.population_var(), f->right->d.population_var())) {
+                        // we can merge right with the bubble
+                        *from = f->left;
+                        b = new node(b, f->right);
+                        delete f;
+                        f = *from;
+                    } else {
+                        // std::cout << "can't fix and have a bubble: \n b:" << b->d << " l:" << f->left->d << " r:" << f->right->d << std::endl;
+                        // std::cout << "lr:" << m << " bl:" << n << " br:" << o << std::endl;
+                        // print_helper(std::cout, 0, b);
+                        // print_helper(std::cout, 0, f);
+
+                        node * nb = nullptr;
+
+                        if (n.population_var() < o.population_var()) {
+                            // try inserting f->left into b
+                            *from = f->right;
+                            insert_helper2(&b, f->left, &nb);
+
+                            if (nb != nullptr) {
+                                std::cout << "tried inserting left into bubble but a new bubble formed!" << std::endl;
+                                throw std::logic_error("can't merge and have a bubble");
+                            } 
+                            delete f;
+                            f = *from;
+                        } else {
+                            *from = f->left;
+                            insert_helper2(&b, f->right, &nb);
+
+                            if (nb != nullptr) {
+                                std::cout << "tried inserting right into bubble but a new bubble formed!" << std::endl;
+                                throw std::logic_error("can't merge and have a bubble");
+                            }
+                            delete f;
+                            f = *from;
+                        }
+
+                    }
+                } else {
+                    if (f->left->d.population_var() < f->right->d.population_var()) {
+                        b = f->right;
+                        *from = f->left;
+                        delete f;
+                        f = *from;
+                    } else {
+                        b = f->left;
+                        *from = f->right;
+                        delete f;
+                        f = *from;
+                    }
+                }
+            } else {
+                f->d = m;
+            }
+        }
+        
+        if (b != nullptr) {
+            // can we insert the bubble here?
+            dist m = mix(f->d, b->d);
+
+            if(m.population_var() > max(f->d.population_var(), b->d.population_var())) {
+                // we can insert it here!
+                *from = new node(f, b);
+                b = nullptr;
+            } else {
+                *bubble = b;
+            }
+        }
+
+    }
 
     bool insert_helper(node ** from, node * sample, node ** bubble) {
         if (*from == nullptr) {
@@ -428,12 +768,30 @@ public:
     void insert(double sample) {
         node * bub = nullptr;
         node * s = new node(sample);
-        insert_helper(&root, s, &bub);
 
-        // bubbled all the way up-- we need to add a new root
-        if (bub != nullptr) {
-            node * n = new node(bub, root);
-            root = n;
+        std::set<node*> inserted;
+
+
+        for(int i = 0; true; i++) {
+            std::cout << "try #" << i << std::endl;
+            insert_helper2(&root, s, &bub);
+            inserted.insert(s);
+
+            // bubbled all the way up-- we need to add a new root
+            if (bub != nullptr) {
+                if (bub->d.population_var() > root->d.population_var()) {
+                    std::swap(root, bub);
+                }
+
+                if (inserted.find(bub) != inserted.end()) {
+                    throw std::logic_error("trying to insert the same node twice!");
+                }
+                
+                s = bub;
+                bub = nullptr;
+            } else {
+                break;
+            }
         }
     }
 };
@@ -484,6 +842,28 @@ int main(int ac, char ** av) {
 
     std::cout << d0 << " mix " << d1 << "->" << mix(d0, d1) << " -- " << comp_dist(d0, d1) << std::endl;
 
+    d0 = dist(0, 1, 10);
+    d1 = dist(0, 2, 10);
+
+    std::cout << d0 << " mix " << d1 << "->" << mix(d0, d1) << " -- " << comp_dist(d0, d1) << std::endl;
+
+    d0 = dist(0, 1, 10);
+    d1 = dist(0, 0.5, 10);
+
+    std::cout << d0 << " mix " << d1 << "->" << mix(d0, d1) << " -- " << comp_dist(d0, d1) << std::endl;
+
+
+    d0 = dist(-1e100, 1, 10);
+    d1 = dist(1e100, 1, 10);
+
+    std::cout << d0 << " mix " << d1 << "->" << mix(d0, d1) << " -- " << comp_dist(d0, d1) << std::endl;
+
+
+    d0 = dist(-1e100, 2, 10);
+    d1 = dist(1e100, 2, 10);
+
+    std::cout << d0 << " mix " << d1 << "->" << mix(d0, d1) << " -- " << comp_dist(d0, d1) << std::endl;
+
 
 
     cluster c;
@@ -495,9 +875,9 @@ int main(int ac, char ** av) {
 
     for(int x = 0; x < 20; x++) {
         if (coin(gen) == 0) {
-            c.insert(n1(gen));
+            c.insert3(n1(gen));
         } else {
-            c.insert(n2(gen));
+            c.insert3(n2(gen));
         }
     }
 

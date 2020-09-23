@@ -1,0 +1,416 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Normal Distributions}
+\author{donniet }
+\date{January 2019}
+
+\newcommand{\Var}{\mathrm{Var}}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+Approximate a mixture of two normal distributions with a normal distribution and calculate the error of the approximation \par
+
+We will use 
+\begin{equation}
+\mathcal{N}(\mu, \sigma^2|x)=\frac{1}{\sqrt{2\pi}\sigma} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+\end{equation}
+
+Let $A = \mathcal{N}(\mu_a, \sigma_a^2)$ and $B = \mathcal{N}(\mu_b, \sigma_b^2)$ then using a mixture factor $\alpha \in [0,1]$ the mixture $A \oplus_\alpha B$ is
+
+\begin{equation}
+    A \oplus_\alpha B=\alpha \mathcal{N}(\mu_a, \sigma_a^2) + (1-\alpha)\mathcal{N}(\mu_b, \sigma_b^2)
+\end{equation}
+\begin{equation}
+    = \frac{\alpha}{\sqrt{2\pi}\sigma_a} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} + \frac{1-\alpha}{\sqrt{2\pi}\sigma_b}e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}}
+\end{equation}
+
+We can calculate the expected value and standard deviation of this distribution to construct an approximate normal distribution $C$.  
+
+\begin{equation}
+    \mu = E\left[A\oplus_\alpha B \right] = \frac{1}{\sqrt{2\pi}} \int_{-\infty}^{\infty} \left( x \frac{\alpha}{\sqrt{2\pi}\sigma_a} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} + x\frac{1-\alpha}{\sqrt{2\pi}\sigma_b}e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}} \right) dx
+\end{equation}
+
+\begin{equation}
+    \mu =  \frac{\alpha}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} x e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \frac{1-\alpha}{\sqrt{2\pi}\sigma_b}\int_{-\infty}^{\infty} x e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}} dx
+\end{equation}
+
+\begin{equation}
+    \mu =  \alpha E[A] + (1-\alpha)E[B]
+\end{equation}
+
+\begin{equation}
+    \mu = \alpha \mu_a + (1-\alpha)\mu_b
+\end{equation}
+
+The variance is more difficult to calculate:
+
+\begin{equation}
+     \Var\left[A\oplus_\alpha B \right]= \frac{1}{\sqrt{2\pi}} \int_{-\infty}^{\infty} (x-\mu)^2 \left( \frac{\alpha}{\sigma_a} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} + \frac{1-\alpha}{\sigma_b}e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}} \right) dx
+\end{equation}
+
+\begin{equation}
+     = \frac{\alpha}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (x-\mu)^2 e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \frac{1-\alpha}{\sqrt{2\pi}\sigma_b}\int_{-\infty}^{\infty}(x-\mu)^2 e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}} dx
+\end{equation}
+
+\begin{equation}
+     = \frac{\alpha}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (x^2-2\mu x+\mu^2) e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \frac{1-\alpha}{\sqrt{2\pi}\sigma_b}\int_{-\infty}^{\infty}(x^2-2\mu x + \mu^2) e^{\frac{-(x-\mu_b)^2}{2\sigma_b^2}} dx
+\end{equation}
+
+Let's take just the left integral for now
+
+\begin{equation}
+     = \frac{\alpha}{\sqrt{2\pi}\sigma_a} \left( \int_{-\infty}^{\infty} x^2 e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx - 2\mu \int_{-\infty}^{\infty} x e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \mu^2 \int_{-\infty}^{\infty} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} x^2 e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx - \frac{2\mu}{\sqrt{2\pi}\sigma_a}  \int_{-\infty}^{\infty} x e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \frac{\mu^2}{\sqrt{2\pi}\sigma_a}  \int_{-\infty}^{\infty} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+The second term in the parenthesis is the formula for $2\mu E[\mathcal{N}(\mu_a, \sigma_a^2)] = 2\mu\mu_a$, and the third is simply equal to $\mu^2$
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} x^2 e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+add some terms we will need later
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (x^2 + 2\mu_a x - 2 \mu_a x - \mu_a^2 + \mu_a^2) e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} ( (x-\mu_a)^2 + 2\mu_a x - \mu_a^2) e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (x-\mu_a)^2 e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (2\mu_a x - \mu_a^2 ) e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+The third term in parenthesis is $\Var[\mathcal{N}(\mu_a, \sigma_a^2)]=\sigma_a^2$ 
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \sigma_a^2 + \frac{1}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} (2\mu_a x - \mu_a^2 ) e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \sigma_a^2 + \frac{2\mu_a}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} x e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx - \frac{\mu_a^2}{\sqrt{2\pi}\sigma_a} \int_{-\infty}^{\infty} e^{\frac{-(x-\mu_a)^2}{2\sigma_a^2}} dx \right) + \ldots
+\end{equation}
+
+The fourth term in parenthesis is $2\mu_a E[\mathcal{N}(\mu_a, \sigma_a^2)]=2 \mu_a^2$ and the last term is equal to $\mu_a^2$
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \sigma_a^2 + 2 \mu_a^2 - \mu_a^2 \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( -2 \mu \mu_a + \mu^2 + \sigma_a^2 + \mu_a^2 \right) + \ldots
+\end{equation}
+
+\begin{equation}
+     = \alpha \left( \sigma_a^2 + \left(\mu - \mu_a \right)^2  \right) + \ldots
+\end{equation}
+
+The right side is symmetric so we have:
+
+\begin{equation}
+    \Var\left[A\oplus_\alpha B \right] = \alpha \left( \sigma_a^2 + \left( \mu - \mu_a \right)^2 \right ) + (1-\alpha)\left( \sigma_b^2 + \left( \mu - \mu_b \right)^2 \right)
+\end{equation}
+
+This makes intuitive sense.  The variance of the weighted sum of two Gaussians is the weighted sum of the variances plus the squared difference between each mean and the new mean. \par
+
+We will substitute in for $\mu$ to get an alternative formula for $\Var\left[ A \oplus_\alpha B \right]$ 
+
+\begin{equation}
+\begin{aligned}
+      \alpha & \left( \sigma_a^2 + \left(\mu - \mu_a \right)^2 \right ) + (1-\alpha)\left( \sigma_b^2 + \left( \mu - \mu_b \right)^2 \right) \\
+    = \alpha & \sigma_a^2 + (1-\alpha)\sigma_b^2 + \alpha (1-\alpha)(\mu_a-\mu_b)^2
+\end{aligned}
+\end{equation}
+
+The error of this new distribution to approximate the mixture is:
+
+\begin{equation}
+    \epsilon^2 = \int_{-\infty}^{\infty} \left( A \oplus_\alpha B - \mathcal{N}(\mu, \sigma^2|x) \right)^2 dx
+\end{equation}
+
+\begin{equation}
+    \epsilon^2 = \int_{-\infty}^{\infty} \left( \alpha \mathcal{N}(\mu_a, \sigma_a^2|x) + (1-\alpha)\mathcal{N}(\mu_b, \sigma_b^2|x) - \mathcal{N}(\mu, \sigma^2|x) \right)^2 dx
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+\label{eqn:normalproduct}
+    \epsilon^2 =
+        \alpha^2 & \int_{-\infty}^{\infty} \mathcal{N}^2(\mu_a, \sigma_a^2|x) dx \\
+        + (1-\alpha)^2 & \int_{-\infty}^{\infty} \mathcal{N}^2(\mu_b, \sigma_b^2|x) dx \\
+        + & \int_{-\infty}^{\infty} \mathcal{N}^2(\mu, \sigma^2|x) dx \\
+        + 2 \alpha (1-\alpha) & \int_{-\infty}^{\infty} \mathcal{N}(\mu_a, \sigma_a^2|x) \mathcal{N}(\mu_b, \sigma_b^2|x) dx \\
+        - 2 \alpha & \int_{-\infty}^{\infty} \mathcal{N}(\mu_a, \sigma_a^2|x) \mathcal{N}(\mu, \sigma^2|x) dx \\
+        - 2 (1-\alpha) & \int_{-\infty}^{\infty} \mathcal{N}(\mu_b, \sigma_b^2|x)\mathcal{N}(\mu, \sigma^2|x)dx 
+\end{aligned}
+\end{equation}
+
+Each term is the product of two Gaussians so we will calculate the following and substitute:
+
+\begin{equation}
+    P(\mu, \sigma^2; \nu, \tau^2) = \int_{-\infty}^\infty \mathcal{N}(\mu, \sigma^2|x) \mathcal{N}(\nu, \tau^2|x) dx
+\end{equation}
+\begin{equation}
+    = \int_{-\infty}^\infty \frac{1}{\sqrt{2\pi}\sigma} e^{-\frac{(x-\mu)^2}{2\sigma^2}} \frac{1}{\sqrt{2\pi}\tau} e^{-\frac{(x-\nu)^2}{2\tau^2}} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{-\frac{(x-\mu)^2}{2\sigma^2}} e^{-\frac{(x-\nu)^2}{2\tau^2}} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{-\frac{(x-\mu)^2}{2\sigma^2}-\frac{(x-\nu)^2}{2\tau^2}} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2\sigma^2\tau^2}\left(-\tau^2(x-\mu)^2-\sigma^2(x-\nu)^2\right)} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2\sigma^2\tau^2}\left(-\tau^2(x^2-2\mu x+\mu^2)-\sigma^2(x^2-2\nu x +\nu^2)\right)} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2\sigma^2\tau^2}\left(
+    -\tau^2 x^2+2\tau^2 \mu x-\tau^2 \mu^2-\sigma^2 x^2+2 \sigma^2 \nu x - \sigma^2 \nu^2 
+    \right)} dx
+\end{equation}
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2\sigma^2\tau^2} \left(
+    -\left( \sigma^2 + \tau^2 \right) x^2
+    +2\left( \sigma^2\nu + \tau^2\mu \right) x
+    -\left( \sigma^2\nu^2 + \tau^2\mu^2 \right)
+    \right)} dx
+\end{equation}
+
+Now we complete the square in the exponent:
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2\sigma^2\tau^2} \left(
+    -\left(\sigma^2+\tau^2\right)\left(x - \frac{\tau^2 \mu + \sigma^2 \nu}{\sigma^2+\tau^2}\right)^2
+    - \left( \sigma^2 \nu^2 + \tau^2 \mu^2 \right)
+    + \frac{\left( \tau^2 \mu + \sigma^2 \nu \right)^2}{\sigma^2 + \tau^2}
+    \right)} dx
+\end{equation}
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{\sigma^2+\tau^2}{2\sigma^2\tau^2} \left(
+    -\left(x - \frac{\tau^2 \mu + \sigma^2 \nu}{\sigma^2+\tau^2}\right)^2
+    - \frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{\sigma^2+\tau^2}
+    + \left(\frac{ \tau^2 \mu + \sigma^2 \nu }{\sigma^2 + \tau^2}\right)^2
+    \right)} dx
+\end{equation}
+
+We will let $\rho^2=\frac{\sigma^2\tau^2}{\sigma^2+\tau^2}$ and $\lambda=\frac{\tau^2 \mu + \sigma^2 \nu}{\sigma^2+\tau^2}$ which when substituted gives:
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{\frac{1}{2 \rho^2} \left(
+    -\left(x - \lambda \right)^2
+    - \frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{\sigma^2+\tau^2}
+    + \lambda^2
+    \right)} dx
+\end{equation}
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} \int_{-\infty}^\infty e^{-\frac{(x - \lambda)^2}{2 \rho^2}}
+    e^{-\frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{2\rho^2\left(\sigma^2+\tau^2\right)}}
+    e^{\frac{\lambda^2}{2\rho^2}} dx
+\end{equation}
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} e^{-\frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{2\rho^2\left(\sigma^2+\tau^2\right)}}
+    e^{\frac{\lambda^2}{2\rho^2}} \int_{-\infty}^\infty e^{-\frac{(x - \lambda)^2}{2 \rho^2}}
+     dx
+\end{equation}
+
+Substituting back in for $\rho^2$ in the first exponent:
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} e^{-\frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{2\frac{\sigma^2\tau^2}{\sigma^2+\tau^2}\left(\sigma^2+\tau^2\right)}}
+    e^{\frac{\lambda^2}{2\rho^2}} \int_{-\infty}^\infty e^{-\frac{(x - \lambda)^2}{2 \rho^2}}
+     dx
+\end{equation}
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} e^{-\frac{\sigma^2 \nu^2 + \tau^2 \mu^2}{2\sigma^2\tau^2}}
+    e^{\frac{\lambda^2}{2\rho^2}} \int_{-\infty}^\infty e^{-\frac{(x - \lambda)^2}{2 \rho^2}}
+     dx
+\end{equation}
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}
+    e^{\frac{\lambda^2}{2\rho^2}} \int_{-\infty}^\infty e^{-\frac{(x - \lambda)^2}{2 \rho^2}}
+     dx
+\end{equation}
+
+The integral is a Gaussian with mean $\lambda$ and variance $\rho^2$ and we know that $\int_{-\infty}^\infty \mathcal{N}(\lambda, \rho^2|x) dx = \sqrt{2\pi}\rho$
+
+\begin{equation}
+    = \frac{1}{2\pi\sigma\tau} e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}
+    e^{\frac{\lambda^2}{2\rho^2}} \sqrt{2\pi}\rho
+\end{equation}
+\begin{equation}
+\label{eqn:prodgaus}
+    P(\mu, \sigma^2; \nu, \tau^2) = \int_{-\infty}^\infty \mathcal{N}(\mu, \sigma^2) \mathcal{N}(\nu, \tau) dx = \frac{1}{\sqrt{2\pi}}\frac{\rho}{\sigma\tau} e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}
+    e^{\frac{\lambda^2}{2\rho^2}}
+\end{equation}
+
+Where $\rho^2=\frac{\sigma^2\tau^2}{\sigma^2+\tau^2}$ and $\lambda=\frac{\tau^2\mu+\sigma^2\nu}{\sigma^2+\tau^2}$ \par
+
+As an aside we can calculate $P(\mu,\sigma^2;\mu,\sigma^2)=\int_{-\infty}^\infty \mathcal{N}^2(\mu, \sigma^2|x) dx$.  In this special case we have the following values for $\lambda$ and $\rho^2$\par
+
+\begin{equation}
+    \lambda = \frac{\sigma^2\mu+\sigma^2\mu}{\sigma^2 + \sigma^2} 
+            = \frac{2\sigma^2\mu}{2\sigma^2} 
+            = \mu
+\end{equation}
+
+\begin{equation}
+    \rho^2 = \frac{\sigma^4}{2\sigma^2} = \frac{1}{2}\sigma^2
+\end{equation}
+
+\begin{equation}
+    P(\mu,\sigma^2;\mu,\sigma^2) = \frac{1}{\sqrt{2\pi}}\frac{\rho}{\sigma^2}e^{-\frac{\mu^2}{2\sigma^2}}e^{-\frac{\mu^2}{2\sigma^2}}e^{\frac{\lambda^2}{2\rho^2}}
+\end{equation}
+
+\begin{equation}
+    P(\mu,\sigma^2;\mu,\sigma^2) = \frac{1}{\sqrt{2\pi}}\frac{\rho}{\sigma^2}e^{-\frac{\mu^2}{2\sigma^2}}e^{-\frac{\mu^2}{2\sigma^2}}e^{\frac{\lambda^2}{2\rho^2}}
+\end{equation}
+\begin{equation}
+    P(\mu,\sigma^2;\mu,\sigma^2) = \frac{1}{\sqrt{2\pi}}\frac{\rho}{\sigma^2}e^{-\frac{\mu^2}{\sigma^2}}e^{\frac{\lambda^2}{2\rho^2}}
+\end{equation}
+
+Substituting the special-case values above for $\rho^2$ and $\lambda$ gives
+
+\begin{equation}
+\begin{aligned}
+    P(\mu,\sigma^2;\mu,\sigma^2) = \int_{-\infty}^{\infty}\mathcal{N}^2(\mu, \sigma^2)dx = & \frac{1}{\sqrt{2\pi}}\frac{\sigma}{\sqrt{2}\sigma^2}e^{-\frac{\mu^2}{\sigma^2}}e^{\frac{\mu^2}{\sigma^2}} \\
+    = & \frac{1}{2\sqrt{\pi}\sigma}
+\end{aligned}
+\end{equation}
+
+Next we will substitute $\rho^2$ and $\lambda$ into \ref{eqn:prodgaus}:
+
+\begin{equation}
+    \begin{aligned}
+P(\mu, \sigma^2; \nu, \tau^2) = & \frac{1}{\sqrt{2\pi}}\frac{\rho}{\sigma\tau} e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}
+    e^{\frac{\lambda^2}{2\rho^2}} \\
+    = & \frac{1}{\sqrt{2\pi}} \frac{\sqrt{\frac{\sigma^2\tau^2}{\sigma^2+\tau^2}}}{\sigma\tau}e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}e^{\frac{\left(\frac{\tau^2\mu+\sigma^2\nu}{\sigma^2+\tau^2} \right)^2}{2\frac{\sigma^2\tau^2}{\sigma^2+\tau^2}}} \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{-\frac{\nu^2}{2\tau^2}}e^{ - \frac{\mu^2}{2\sigma^2}}e^{\frac{\left(\tau^2\mu + \sigma^2\nu \right)^2}{2\sigma^2\tau^2\left( \sigma^2 + \tau^2 \right)}} \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{-\frac{\nu^2}{2\tau^2} - \frac{\mu^2}{2\sigma^2}+\frac{\left(\tau^2\mu + \sigma^2\nu \right)^2}{2\sigma^2\tau^2\left( \sigma^2 + \tau^2 \right)}} \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{
+        \frac{-\sigma^2\left(\sigma^2+\tau^2\right)\nu^2-\tau^2\left(\sigma^2+\tau^2\right)\mu^2+\left( \tau^2\mu + \sigma^2\nu \right)^2}{2\sigma^2\tau^2\left( \sigma^2+\tau^2 \right)}
+    } \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{
+        \frac{-\sigma^4\nu^2-\sigma^2\tau^2\nu^2 - \sigma^2\tau^2\mu^2 - \tau^4\mu^2 + \tau^4\mu^2+2\sigma^2\tau^2\mu\nu+\sigma^4\nu^2}
+             {2\sigma^2\tau^2\left( \sigma^2+\tau^2 \right)}
+    } \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{
+        \frac{-\sigma^2\tau^2 \nu^2 + 2\sigma^2\tau^2 \mu \nu - \sigma^2\tau^2\mu^2}{2\sigma^2\tau^2\left(\sigma^2 + \tau^2 \right)} 
+    } \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{
+        \frac{-\nu^2 + 2\mu \nu - \mu^2}{2\left(\sigma^2 + \tau^2 \right)} 
+    } \\
+    = & \frac{1}{\sqrt{2\pi\left( \sigma^2 + \tau^2 \right)}}e^{
+        \frac{-(\mu - \nu)^2}{2\left(\sigma^2 + \tau^2 \right)} 
+    } \\
+    = & \mathcal{N}(\mu, \sigma^2+\tau^2| \nu) = \mathcal{N}(\nu, \sigma^2+\tau^2| \mu)
+    \end{aligned}
+\end{equation}
+
+That bears repeating:
+
+\begin{equation}
+    \int_{-\infty}^\infty \mathcal{N}(\mu, \sigma^2|x) \mathcal{N}(\nu, \tau^2|x) dx = \mathcal{N}(\mu, \sigma^2+\tau^2| \nu) = \mathcal{N}(\nu, \sigma^2+\tau^2|\mu)
+\end{equation}
+
+
+Now we substitute into \ref{eqn:normalproduct}:
+
+\begin{equation}
+\begin{aligned}
+    \epsilon^2 = & \frac{ \alpha^2}{2\sqrt{\pi}\sigma_a} 
+                + \frac{(1-\alpha)^2}{2\sqrt{\pi}\sigma_b} 
+                + \frac{1}{2\sqrt{\pi}\sigma} \\
+                + & \frac{2\alpha(1-\alpha)}{\sqrt{2\pi\left( \sigma_a^2 + \sigma_b^2 \right)}} e^{-\frac{(\mu_a-\mu_b)^2}{2(\sigma_a^2+\sigma_b^2)}}  \\
+                - & \frac{2\alpha}{\sqrt{2\pi\left( \sigma_a^2 + \sigma^2 \right)}} e^{-\frac{(\mu - \mu_a)^2}{2(\sigma^2 + \sigma_a^2)}}  \\
+                - & \frac{2(1-\alpha)}{\sqrt{2\pi\left( \sigma_b^2 + \sigma^2 \right)}} e^{-\frac{(\mu - \mu_b)^2}{2(\sigma^2 + \sigma_b^2)}} 
+\end{aligned}
+\end{equation}
+
+Or written a different way
+
+\begin{equation}
+\begin{aligned}
+    \epsilon^2 = & \frac{ \alpha^2}{2\sqrt{\pi}\sigma_a} 
+                + \frac{(1-\alpha)^2}{2\sqrt{\pi}\sigma_b} 
+                + \frac{1}{2\sqrt{\pi}\sigma} \\
+                + & 2\alpha(1-\alpha)\mathcal{N}(\mu_a, \sigma_a^2+\sigma_b^2|\mu_b)  \\
+                - & 2\alpha \mathcal{N}(\mu, \sigma^2+\sigma_a^2|\mu_a)  \\
+                - & 2(1-\alpha)\mathcal{N}(\mu, \sigma^2+\sigma_b^2|\mu_b) 
+\end{aligned}
+\end{equation}
+
+We will also need to estimate the difference between two Gaussian distributions which we will do as the following
+
+\begin{equation}
+\begin{aligned}
+    \epsilon^2 & =\int_{-\infty}^\infty \left( \mathcal{N}(\mu, \sigma^2|x) - \mathcal{N}(\nu, \tau^2|x) \right)^2 dx \\
+    &=\int_{-\infty}^\infty \mathcal{N}^2(\mu, \sigma^2|x)dx -2\int_{-\infty}^\infty \mathcal{N}(\mu, \sigma^2|x)\mathcal{N}(\nu, \tau^2|x)dx + \int_{-\infty}^\infty \mathcal{N}^2(\nu, \tau^2|x) dx \\
+    &=\mathcal{N}(\mu,2\sigma^2|\mu)-2\mathcal{N}(\mu,\sigma^2+\tau^2|\nu)+\mathcal{N}(\nu,2\tau^2|\nu) \\
+    &=\frac{1}{2\sqrt{\pi}\sigma}+\frac{1}{2\sqrt{\pi}\tau}-\frac{2}{\sqrt{2\pi\left( \sigma^2+\tau^2 \right)}}e^{-\frac{(\mu-\nu)^2}{2(\sigma^2+\tau^2)}}
+\end{aligned}
+\end{equation}
+
+If we evaluate this when the distributions are equal ($\sigma = \tau$ and $\mu=\nu$) we get:
+
+\begin{equation}
+    \epsilon^2|_0 = \frac{1}{2\sqrt{\pi}\sigma} + \frac{1}{2\sqrt{\pi}\sigma} - \frac{2}{2\sqrt{\pi}\sigma} = 0
+\end{equation}
+
+And as the difference between the means approaches $\infty$ we have
+
+\begin{equation}
+    \epsilon^2|_\infty = \frac{1}{2\sqrt{\pi}\sigma} + \frac{1}{2\sqrt{\pi}\tau} = \frac{1}{2\sqrt{\pi}}\left(\frac{\sigma+\tau}{\sigma\tau} \right)
+\end{equation}
+
+Since we want a value to go from zero to one we will divide by the
+
+\begin{equation}
+\begin{aligned}
+    2\sqrt{\pi}\frac{\sigma\tau}{\sigma + \tau}\epsilon^2 &= \frac{\tau}{\sigma + \tau} + \frac{\sigma}{\sigma + \tau} - 2\left( \frac{\sigma\tau}{\sigma + \tau}\right)\sqrt{\frac{2}{\sigma^2+\tau^2}}e^{-\frac{(\mu-\nu)^2}{2(\sigma^2+\tau^2)}} \\
+    &= 1 - 2\left( \frac{\sigma\tau}{\sigma + \tau}\right)\sqrt{\frac{2}{\sigma^2+\tau^2}}e^{-\frac{(\mu-\nu)^2}{2(\sigma^2+\tau^2)}} \\
+    &= 1 - 2\left( \frac{\sigma\tau}{\sigma + \tau}\right) \sqrt{\frac{2}{\sigma^2+\tau^2}}\sqrt{2\pi\left( \sigma^2+\tau^2 \right)} \mathcal{N}\left(\nu, \sigma^2+\tau^2|\mu \right) \\
+    &= 1 - 4\sqrt{\pi}\left( \frac{\sigma\tau}{\sigma + \tau}\right) \mathcal{N}\left(\nu, \sigma^2+\tau^2|\mu \right) \\
+\end{aligned}
+\end{equation}
+
+We will also be interested to know when the mixture of two Gaussians has a variance less than one of the constituent Gaussians.  We will assume without loss of generality that $\sigma > \tau$ so $\sigma - \tau > 0$
+
+\begin{equation} \begin{aligned}
+    \rho^2 & = \Var\left[ \alpha \mathcal{N}\left( \mu, \sigma^2 | x \right) + (1-\alpha)\mathcal{N}( \nu, \tau^2 | x ) \right] \\
+    \rho^2 & = \alpha \sigma^2 + (1-\alpha)\tau^2 + \alpha (1-\alpha)( \mu - \nu )^2 \\
+    \rho^2 & = \alpha \sigma^2 + (1-\alpha)(\sigma^2 - (\sigma^2 - \tau^2)) + \alpha (1-\alpha) ( \mu - \nu )^2 \\
+    \rho^2 & = \alpha \sigma^2 + \sigma^2 - \alpha \sigma^2 - (1-\alpha)(\sigma^2 - \tau^2) + \alpha (1-\alpha)(\mu - \nu)^2 \\
+    \frac{\rho^2 - \sigma^2}{1-\alpha} & = \alpha(\mu - \nu)^2 - (\sigma^2 - \tau^2)
+\end{aligned} \end{equation}
+
+So when $\sigma^2 - \tau^2 > \alpha(\mu - \nu)$ then $\sigma^2 > \rho^2$.  Let's find the zeros of this function:
+
+\begin{equation} \begin{aligned}
+     0 & < \alpha (\mu - \nu)^2 - (\sigma^2 - \tau^2) \\
+\sigma^2 - \tau^2 & < \alpha (\mu - \nu)^2 \\
+\frac{\sigma^2 - \tau^2}{(\mu - \nu)^2} & < \alpha \\
+\frac{(\sigma + \tau)(\sigma - \tau)}{(\mu - \nu)^2} & < \alpha
+\end{aligned} \end{equation}
+
+
+
+
+\end{document}
